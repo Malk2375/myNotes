@@ -25,22 +25,24 @@ const DashboardScreen = ({ navigation, route }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text>Liste des notes :</Text>
+      <Text style={styles.textContainer}>Liste des notes :</Text>
+      <View style={styles.addButtonContainer}>
+        <Button
+          title="Ajouter une note"
+          onPress={() => navigation.navigate('Form', { notes })}
+        />
+      </View>
       {notes.map(note => (
-        <TouchableOpacity key={note.id} onPress={() => handleNotePress(note)}>
-          <View style={styles.noteContainer}>
+        <TouchableOpacity key={note.id} onPress={() => handleNotePress(note)} style={styles.noteContainer}>
+          <View style={styles.priorityBorderContainer}>
             <View style={[styles.priorityBorder, { borderColor: getPriorityColor(note.priority) }]}>
               <Text style={styles.title}>{note.title}</Text>
-              <Text>Contenu: {note.content}</Text>
-              <Text>Priorité: {note.priority}</Text>
+              <Text style={styles.content}>Contenu: {note.content}</Text>
+              <Text style={styles.priority}>Priorité: {note.priority}</Text>
             </View>
           </View>
         </TouchableOpacity>
       ))}
-      <Button
-        title="Ajouter une note"
-        onPress={() => navigation.navigate('Form', { notes })} // Naviguer vers l'écran de formulaire en passant les notes existantes
-      />
     </ScrollView>
   );
 };
@@ -50,27 +52,47 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: '#FFFFFF', // Fond blanc
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
+    padding: 20,
   },
-  noteContainer: {
-    width: '90%', // Définir une largeur fixe pour chaque note
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 15,
+  addButtonContainer: {
+    marginBottom: 10,
+  },
+  textContainer: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    alignSelf: 'flex-start', // Aligner le texte à gauche
+  },
+  buttonContainer: {
+    marginBottom: 10,
+  },
+  noteContainer: { // Définir une largeur fixe pour chaque note
+    width: '100%',
     marginBottom: 15,
-    backgroundColor: "#ffffff",
     borderRadius: 10,
     elevation: 3,
+    backgroundColor: "#ffffff",
+  },
+  priorityBorderContainer: {
+    width: '100%',
+    alignItems: 'center', // Centrer le contenu horizontalement
   },
   priorityBorder: {
+    width: '100%', // Utilisez une largeur de 100% pour occuper toute la largeur du conteneur parent
     borderWidth: 2,
-    padding: 10,
-    borderRadius: 5,
+    borderRadius: 10, // Même rayon que le noteContainer
+    borderColor: '#ccc',
+    padding: 10, // Ajouter du padding entre le texte et le bord du priorityBorder
   },
   title: {
     fontWeight: 'bold',
+    textAlign: 'center', // Centrer le titre
+  },
+  content: {
+    textAlign: 'center', // Centrer le contenu
+  },
+  priority: {
+    textAlign: 'center', // Centrer la priorité
   },
 });
 
