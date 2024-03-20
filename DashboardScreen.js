@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, Text, Button, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; // Import de l'icône Ionicons
 
 const DashboardScreen = ({ navigation, route }) => {
   const { notes } = route.params ?? { notes: [] }; // Récupérer les notes depuis les paramètres de navigation ou initialiser à une liste vide
@@ -25,20 +26,22 @@ const DashboardScreen = ({ navigation, route }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.textContainer}>Liste des notes :</Text>
-      <View style={styles.addButtonContainer}>
-        <Button
-          title="Ajouter une note"
+      <View style={styles.header}>
+        <Text style={styles.textContainer}>Liste des notes :</Text>
+        <TouchableOpacity
           onPress={() => navigation.navigate('Form', { notes })}
-        />
+          style={styles.addButton}
+        >
+          <Ionicons name="add" size={24} color="black" />
+        </TouchableOpacity>
       </View>
       {notes.map(note => (
         <TouchableOpacity key={note.id} onPress={() => handleNotePress(note)} style={styles.noteContainer}>
           <View style={styles.priorityBorderContainer}>
             <View style={[styles.priorityBorder, { borderColor: getPriorityColor(note.priority) }]}>
               <Text style={styles.title}>{note.title}</Text>
-              <Text style={styles.content}>Contenu: {note.content}</Text>
-              <Text style={styles.priority}>Priorité: {note.priority}</Text>
+              <Text style={styles.content}>{note.content}</Text>
+              {/* <Text style={styles.priority}>Priorité: {note.priority}</Text> */}
             </View>
           </View>
         </TouchableOpacity>
@@ -51,20 +54,26 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: '#FFFFFF', // Fond blanc
-    alignItems: 'center',
     padding: 20,
   },
-  addButtonContainer: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 10,
   },
   textContainer: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
-    alignSelf: 'flex-start', // Aligner le texte à gauche
+    marginRight: 'auto', // Aligner le texte à gauche
   },
-  buttonContainer: {
-    marginBottom: 10,
+  addButton: {
+    marginLeft: 'auto', // Aligner l'icône à droite
+    backgroundColor: '#00B4D8', // Couleur de fond
+    borderRadius: 20, // Pour un bouton rond
+    width: 70, // Largeur
+    height: 50, // Hauteur
+    justifyContent: 'center', // Centrer verticalement
+    alignItems: 'center', // Centrer horizontalement
   },
   noteContainer: { // Définir une largeur fixe pour chaque note
     width: '100%',
@@ -87,6 +96,7 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: 'bold',
     textAlign: 'center', // Centrer le titre
+    fontSize: 20,
   },
   content: {
     textAlign: 'center', // Centrer le contenu
@@ -95,6 +105,5 @@ const styles = StyleSheet.create({
     textAlign: 'center', // Centrer la priorité
   },
 });
-
 
 export default DashboardScreen;
