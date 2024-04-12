@@ -1,108 +1,226 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // Import de l'icône Ionicons
+import React, { useState, useEffect } from "react";
+import { View, Text, Button, ScrollView, TouchableOpacity, TextInput, StyleSheet } from "react-native";
+import * as SQLite from "expo-sqlite";
+import { Entypo } from "@expo/vector-icons";
+import { Alert } from "react-native";
 
-const DashboardScreen = ({ navigation, route }) => {
-  const { notes } = route.params ?? { notes: [] }; // Récupérer les notes depuis les paramètres de navigation ou initialiser à une liste vide
+const DashboardScreen = ({ navigation }) => {
+  const db = SQLite.openDatabase("tuto.db");
+  const [notes, setNotes] = useState([]);
+  const [searchText, setSearchText] = useState("");
 
-  // Fonction pour naviguer vers l'écran de détails de la note lorsqu'une note est pressée
-  const handleNotePress = (note) => {
-    navigation.navigate('Note', { note });
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchNotes();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, []);
+
+  const fetchNotes = () => {
+    db.transaction((tx) => {
+      tx.executeSql(
+        "SELECT * FROM notes",
+        null,
+        (txObj, resultSet) => {
+          let sortedNotes = resultSet.rows._array.sort((a, b) => {
+            // Tri par ordre d'importance
+            const priorityOrder = { "Important": 1, "Normal": 2, "Pense bête": 3 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+          });
+          setNotes(sortedNotes);
+        },
+        (txObj, error) => console.log(error)
+      );
+    });
   };
 
-  // Fonction pour déterminer la couleur de fond en fonction de la priorité de la note
-  const getPriorityColor = (priority) => {
+  const deleteNote = (id) => {
+    Alert.alert(
+      "Delete Note",
+      "Are you sure you want to delete this note?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          onPress: () => {
+            db.transaction((tx) => {
+              tx.executeSql(
+                "DELETE FROM notes WHERE id = ?",
+                [id],
+                (txObj, resultSet) => {
+                  if (resultSet.rowsAffected > 0) {
+                    fetchNotes();
+                  }
+                },
+                (txObj, err) => console.log(err)
+              );
+            });
+          },
+          style: "destructive",
+        },
+      ],
+      { cancelable: false }
+    );
+  };
+
+  const renderPriorityColor = (priority) => {
     switch (priority) {
-      case 'Important':
-        return '#ff6666'; // Rouge
-      case 'Normal':
-        return '#a3aeff'; // Bleu
-      case 'Pense bête':
-        return '#bababa'; // Gris
+      case "Important":
+        return "#ff6666"; // Red color for Important priority
+      case "Normal":
+        return "#a3aeff"; // Green color for Normal priority
+      case "Pense bête":
+        return "#bababa"; // Blue color for Pense bête priority
       default:
-        return '#FFFFFF'; // Blanc par défaut
+        return "#000000"; // Default color
     }
   };
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.textContainer}>Liste des notes :</Text>
+  const handleNotePress = (note) => {
+    navigation.navigate("Note", { note });
+  };
+
+  const handleSearch = (text) => {
+    setSearchText(text);
+  };
+
+  const filteredNotes = notes.filter((note) =>
+    note.title.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  };
+
+  const showNotes = () => {
+    return filteredNotes.map((note) => {
+      return (
         <TouchableOpacity
-          onPress={() => navigation.navigate('Form', { notes })}
-          style={styles.addButton}
+          key={note.id}
+          style={[styles.noteContainer, { borderColor: renderPriorityColor(note.priority) }]}
+          onPress={() => handleNotePress(note)}
         >
-          <Ionicons name="add" size={24} color="black" />
-        </TouchableOpacity>
-      </View>
-      {notes.map(note => (
-        <TouchableOpacity key={note.id} onPress={() => handleNotePress(note)} style={styles.noteContainer}>
-          <View style={styles.priorityBorderContainer}>
-            <View style={[styles.priorityBorder, { borderColor: getPriorityColor(note.priority) }]}>
-              <Text style={styles.title}>{note.title}</Text>
-              <Text style={styles.content}>{note.content}</Text>
-              {/* <Text style={styles.priority}>Priorité: {note.priority}</Text> */}
-            </View>
+          <Text style={styles.noteDate}>Date: {formatDate(note.created_at)}</Text>
+          <Text style={styles.noteTitle}>{note.title}</Text>
+          <Text style={styles.noteContent}>{note.description}</Text>
+          <View style={[styles.priorityContainer, { backgroundColor: renderPriorityColor(note.priority) }]}>
+            <Text style={styles.priorityText}>{note.priority}</Text>
+          </View>
+          <View style={styles.editButtonContainer}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Form", { note })}
+              style={styles.editButton}
+            >
+              <Text name="edit" size={20} color={"#114B5F"}>EDIT</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.deleteButtonContainer}>
+            <TouchableOpacity onPress={() => deleteNote(note.id)}>
+              <Text name="trash" size={20} color={"#ff3b30"} >DELETE</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
-      ))}
-    </ScrollView>
+      );
+    });
+  };
+
+
+  return (
+    <View style={styles.container}>
+      {/* <TextInput
+        style={styles.searchInput}
+        placeholder="Rechercher..."
+        onChangeText={handleSearch}
+        value={searchText}
+        placeholderTextColor="#999" // Couleur du texte de l'placeholder
+      /> */}
+      <ScrollView>{showNotes()}</ScrollView>
+      <TouchableOpacity onPress={() => navigation.navigate("Form")} style={styles.addButton}>
+        <Text style={styles.addButtonText}>+</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    backgroundColor: '#FFFFFF', // Fond blanc
+    flex: 1,
     padding: 20,
+    backgroundColor: "#fff",
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  searchInput: {
     marginBottom: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    color: "#333",
   },
-  textContainer: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginRight: 'auto', // Aligner le texte à gauche
+  noteContainer: {
+    borderWidth: 1,
+    borderRadius: 10,
+    marginBottom: 10,
+    padding: 10,
+    position: "relative",
+  },
+  noteTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+    color: "#333",
+  },
+  noteDate: {
+    marginBottom: 5,
+    color: "#666",
+  },
+  noteContent: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: "#666",
+  },
+  priorityContainer: {
+    borderRadius: 5,
+    alignSelf: "flex-start",
+    marginBottom: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  priorityText: {
+    fontSize: 14,
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  editButtonContainer: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    zIndex: 999,
   },
   addButton: {
-    marginLeft: 'auto', // Aligner l'icône à droite
-    backgroundColor: '#00B4D8', // Couleur de fond
-    borderRadius: 20, // Pour un bouton rond
-    width: 70, // Largeur
-    height: 50, // Hauteur
-    justifyContent: 'center', // Centrer verticalement
-    alignItems: 'center', // Centrer horizontalement
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    backgroundColor: "#456990",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 5,
   },
-  noteContainer: { // Définir une largeur fixe pour chaque note
-    width: '100%',
-    marginBottom: 15,
-    borderRadius: 10,
-    elevation: 3,
-    backgroundColor: "#ffffff",
-  },
-  priorityBorderContainer: {
-    width: '100%',
-    alignItems: 'center', // Centrer le contenu horizontalement
-  },
-  priorityBorder: {
-    width: '100%', // Utilisez une largeur de 100% pour occuper toute la largeur du conteneur parent
-    borderWidth: 2,
-    borderRadius: 10, // Même rayon que le noteContainer
-    borderColor: '#ccc',
-    padding: 10, // Ajouter du padding entre le texte et le bord du priorityBorder
-  },
-  title: {
-    fontWeight: 'bold',
-    textAlign: 'center', // Centrer le titre
-    fontSize: 20,
-  },
-  content: {
-    textAlign: 'center', // Centrer le contenu
-  },
-  priority: {
-    textAlign: 'center', // Centrer la priorité
+  addButtonText: {
+    fontSize: 24,
+    color: "#fff",
   },
 });
 
